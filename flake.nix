@@ -99,7 +99,8 @@
       imports = [
         inputs.devenv.flakeModule
       ];
-      systems = nixpkgs.lib.systems.flakeExposed;
+      # would be happy to support more, so solver engines are crazy heavy on some hardcode deps
+      systems = ["x86_64-linux" "aarch64-darwin"];
       perSystem = {
         config,
         self',
@@ -276,7 +277,7 @@
         dep = name:
           builtins.head (pkgs.lib.lists.filter
             (x: pkgs.lib.strings.hasInfix name x.name)
-            deps.poetryPackages);
+            poetryDeps.poetryPackages);
 
         cvxpy-latest = pkgs.python3Packages.buildPythonPackage {
           name = "cvxpy";
@@ -319,7 +320,7 @@
           ];
         };
 
-        deps = mkPoetryPackages {
+        poetryDeps = mkPoetryPackages {
           projectDir = ./mantis;
         };
 
@@ -331,6 +332,11 @@
 
             pydantic-extra-types = super.pydantic-extra-types.overridePythonAttrs (old: {
               buildInputs = old.buildInputs or [] ++ [self.python.pkgs.hatchling];
+            });
+
+            clarabel = super.pydantic-extra-types.overridePythonAttrs (old: {
+              buildInputs = old.buildInputs or [] ++ [self.python.pkgs.maturin];
+              nativeBuildInputs = old.buildInputs or [] ++ [self.python.pkgs.maturin];
             });
 
             pyscipopt = pyscipopt-latest;
@@ -353,7 +359,6 @@
 
         envShell = mkPoetryEnv {
           projectDir = ./mantis;
-
           overrides = override overrides;
         };
         mantis-blackbox-package = mkPoetryApplication {
@@ -511,6 +516,13 @@
               devour-flake
             ];
             text = ''
+              (
+                cd mantis
+                echo "running tests"
+                nix develop --impure --command poetry run pytest
+                nix develop --impure --command poetry check --lock
+              )
+              nix flake show --all-systems --json --no-write-lock-file
               nix flake lock --no-update-lock-file
               # devour-flake . "$@" --impure
               nix build .#all

@@ -4,26 +4,7 @@ import cvxpy as cp
 
 MAX_RESERVE = 1e10
 
-from simulation.data import TAssetId, TNetworkId
-
-# simulate denom paths to and from chains, with center node
-def populate_chain_dict(chains: dict[TNetworkId, list[TAssetId]], center_node: TNetworkId):
-    # Add tokens with denom to Center Node
-    # Basic IBC transfer
-    for chain, tokens in chains.items():
-        if chain != center_node:
-            chains[center_node].extend(f"{chain}/{token}" for token in tokens)
-
-    1# Add tokens from Center Node to outers
-    
-    # Simulate IBC transfer through Composable Cosmos
-    for chain, tokens in chains.items():
-        if chain != center_node:
-            chains[chain].extend(
-                f"{center_node}/{token}"
-                for token in chains[center_node]
-                if f"{chain}/" not in token
-            )
+from mantis.simulation.routers.data import TAssetId
 
 def solve(
     all_tokens: list[TAssetId],
@@ -103,7 +84,7 @@ def solve(
     # failed: ECOS, GLPK, GLPK_MI, CVXOPT, SCIPY, CBC, SCS
     # 
     # GLOP, SDPA, GUROBI, OSQP, CPLEX, MOSEK, , COPT, XPRESS, PIQP, PROXQP, NAG, PDLP, SCIP, DAQP
-    prob.solve(verbose= True, solver = "CLARABEL", qcp = False, )
+    prob.solve(verbose= True)
 
     print(
         f"\033[1;91mTotal amount out: {psi.value[all_tokens.index(obj_token)]}\033[0m"
